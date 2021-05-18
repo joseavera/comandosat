@@ -1,0 +1,96 @@
+// PINES USADOS POR EL ESP8266
+const int PIN_ESP8266_RESET = 7;	// Inicializa  ESP8266
+const int PIN_ESP8266_ATIVAR = 8;	// Activa ESP8266
+
+const bool ESP8266_RESET = LOW;
+const bool ESP8266_ATIVAR = HIGH;
+const long ESP8266_BAUDRATE = 115200L;
+
+
+const unsigned long DEFAULT_TIMEOUT = 5000L;
+
+void setup()
+{
+  // Inicializa el puerto de comunicacions serial
+  Serial.begin(ESP8266_BAUDRATE);
+  while(!Serial) {
+    delay(100);
+  }
+  Serial.println("LAB07-experimento1: Usando o ESP8266");
+  esp8266Inicializar();
+}
+
+// Envia comandos AT cada 10 segundos
+void loop(){
+  enviaComandoAT("AT", DEFAULT_TIMEOUT);
+  enviaComandoAT("AT+GMR", DEFAULT_TIMEOUT);
+  enviaComandoAT("AT+UART_CUR?", DEFAULT_TIMEOUT);
+  enviaComandoAT("AT+CWMODE_CUR?", DEFAULT_TIMEOUT);
+  enviaComandoAT("AT+CWMODE_CUR=3", DEFAULT_TIMEOUT);
+  enviaComandoAT("AT+CWMODE_CUR?", DEFAULT_TIMEOUT);
+  enviaComandoAT("AT+CWLAP", DEFAULT_TIMEOUT);
+  delay(10000);
+  Serial.println("=================== ciclo ===================");
+}
+
+// Inicializa ESP8266 para la comunicación
+void esp8266Inicializar() {
+  // Inicializa pines de control del esp8266
+  pinMode(PIN_ESP8266_RESET, OUTPUT);
+  pinMode(PIN_ESP8266_ATIVAR, OUTPUT);
+  digitalWrite(PIN_ESP8266_RESET, ESP8266_RESET);
+  digitalWrite(PIN_ESP8266_ATIVAR, !ESP8266_ATIVAR);
+  esp8266ColdReset();
+  esp8266Controle(true);
+}
+
+// reset ESP8266
+void esp8266ColdReset() {
+  Serial.println("ESP8266: executando cold reset");
+  digitalWrite(PIN_ESP8266_RESET, ESP8266_RESET);
+  delay(100);
+  digitalWrite(PIN_ESP8266_RESET, !ESP8266_RESET);
+  delay(2000);
+}
+
+// Activa o descativa ESP8266
+void esp8266Controle(bool ativar) {
+  if (ativar) {
+    Serial.println("ESP8266: activado");
+    digitalWrite(PIN_ESP8266_ATIVAR, ESP8266_ATIVAR);
+  } else {
+    Serial.println("ESP8266: desactivado");
+    digitalWrite(PIN_ESP8266_ATIVAR, !ESP8266_ATIVAR);
+  }
+  
+  delay(2000);
+}
+
+// Envia datos al Monitor Serial para ESP8266
+bool enviaComandoAT(String comando, unsigned long timeout) {
+  Serial.println(comando);
+  return mostraRespostaComandoAT(timeout);
+}
+
+// Muestra estado de ESP8266 en Monitor Serial
+bool mostraRespostaComandoAT(unsigned long timeout) {
+  // espera por respuesta
+  String resposta = "";
+  unsigned long fim = millis() + timeout;
+  bool recebeuOK = false;
+  do {
+    while (!recebeuOK && Serial.available()) {
+      char caractere = (char) Serial.read();
+	  resposta += caractere;
+      recebeuOK = resposta.endsWith("OK");
+    }
+  } while (!recebeuOK && (fim >= millis()));
+  
+  //si ESP8266 no responde
+  if (0 == resposta.length())		Serial.println("TIMEOUT: ESP8266 no recibe comandos AT");
+  else								Serial.println(resposta);
+  
+  Serial.println("-------------------------------------------------------");
+  Serial.println();
+  return (resposta.length() > 0);
+}
